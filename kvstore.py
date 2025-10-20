@@ -1,7 +1,7 @@
 import os
 import sys
 
-DB_FILE = "data.db"
+DB_FILE = os.path.join(os.path.dirname(__file__), "data.db")
 
 class KVStore:
     def __init__(self):
@@ -32,33 +32,36 @@ class KVStore:
         if write_to_file:
             with open(DB_FILE, "a") as f:
                 f.write(f"SET {key} {value}\n")
+                f.flush()
+                os.fsync(f.fileno())
 
     def get_key(self, key):
-        """Get the value for a key."""
+        """Retrieve a key's value, or empty string if not found."""
         if key in self.keys:
             index = self.keys.index(key)
             return self.values[index]
-        else:
-            return "key not set"
+        return ""
 
 def main():
     store = KVStore()
-    for line in sys.stdin:
-        parts = line.strip().split(" ", 2)
-        if not parts:
-            continue
-        command = parts[0].upper()
+    try:
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(" ", 2)
+            command = parts[0].upper()
 
-        if command == "SET" and len(parts) == 3:
-            key, value = parts[1], parts[2]
-            store.set_key(key, value)
-        elif command == "GET" and len(parts) == 2:
-            key = parts[1]
-            print(store.get_key(key))
-        elif command == "EXIT":
-            break
-        else:
-            print("Invalid command")
+            if command == "SET" and len(parts) == 3:
+                store.set_key(parts[1], parts[2])
+            elif command == "GET" and len(parts) == 2:
+                print(store.get_key(parts[1]), flush=True)
+            elif command == "EXIT":
+                break
+            else:
+                print("Invalid command", flush=True)
+    except EOFError:
+        pass
 
 if __name__ == "__main__":
     main()
